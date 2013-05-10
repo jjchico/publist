@@ -79,6 +79,13 @@ class BibtexConverter {
   private $helper;
 
   /**
+   * Array with author names and replacement.
+   * @access private
+   * @var assoc. array
+   */
+  private $authorlist;
+
+  /**
    * Constructor.
    *
    * @access public
@@ -94,7 +101,7 @@ class BibtexConverter {
    *                           BibTeX field) and clears it up for output. Default is the
    *                           identity function.
    */
-  function __construct($options=array(), $sanitise=null) {
+  function __construct($options=array(), $sanitise=null, $authors=null) {
     // Default options
     $this->options = array(
       'only'  => array(),
@@ -132,6 +139,14 @@ class BibtexConverter {
     $this->options['lang'] = $translations;
 
     $this->helper = new Helper($this->options);
+
+
+    $this->authorlist = array();
+    foreach(preg_split("/((\r?\n)|(\r\n?))/", $authors) as $line){
+      $tmp = explode(" ",$line,2);
+      $this->authorlist[$tmp[1]] = "[[".$tmp[0]."|".$tmp[1]."]]";
+    }
+
   }
 
   /**
@@ -439,9 +454,17 @@ class BibtexConverter {
       if ( $key === 'author' ) {
         $value = $entry['niceauthor'];
       }
-
-      $patterns []= '/@'.$key.'@/';
-      $replacements []= call_user_func($this->sanitise, $value);
+      if ( $key == 'bibtex') {
+        $patterns []= '/@'.$key.'@/';
+        $replacements []= $value;
+      }
+      else {
+        $patterns []= '/@'.$key.'@/';
+        $replacements []= call_user_func($this->sanitise, $value);
+      }
+      if ( $key === 'author' ) {
+        $replacements = $this->authorlink($replacements);
+      }
     }
 
     return preg_replace($patterns, $replacements, $result);
@@ -521,6 +544,18 @@ class BibtexConverter {
     }
 
     return $string;
+  }
+
+  /**
+   * This function adds links to co-author websites where available.
+   *
+   * @access private
+   * @param string data Formatted author line without links.
+   * @return string data Formatted author line with links.
+   */
+  private function authorlink($data) {
+    $data = str_replace(array_keys($this->authorlist),$this->authorlist,$data);
+    return $data;
   }
 }
 

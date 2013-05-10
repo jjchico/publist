@@ -37,7 +37,7 @@ class syntax_plugin_publist extends DokuWiki_Syntax_Plugin {
 
         // Partition properly 
         $matches = array();
-        $pattern = '/\[publist(?:\|(page|file):(.+?))(?:\|(wiki|html):(page|file):(.+?))(?:\|(.+?(?:\|.+?)*))?\]/';
+        $pattern = '/\[publist(?:\|(page|file|url):(.+?))(?:\|(wiki|html):(page|file|url):(.+?))(?:\|(.+?(?:\|.+?)*))?\]/';
         if ( 0 === preg_match($pattern, $match, $matches) ) {
             $data['error'] = 'Not valid publist syntax: '.$match;
         }
@@ -45,6 +45,7 @@ class syntax_plugin_publist extends DokuWiki_Syntax_Plugin {
             $data['bibtex'] = array('type' => $matches[1], 'ref' => $matches[2]);
             $data['template'] = array('target' => $matches[3], 'type' => $matches[4], 'ref' => $matches[5]);
             $data['options'] = array();
+
       
             // Set default language. Get current lang from translation plugin
             // if installed & enabled or fall back to default lang in conf.
@@ -78,6 +79,12 @@ class syntax_plugin_publist extends DokuWiki_Syntax_Plugin {
                  }
                }
             }
+
+            if ($data['options']['authors'])
+            {
+              $tmp = explode(':', $data['options']['authors']);
+              $data['authors'] = array('type' => $tmp[0], 'ref' => $tmp[1]);
+            }
         }
         return $data;
     }
@@ -98,6 +105,16 @@ class syntax_plugin_publist extends DokuWiki_Syntax_Plugin {
                 $data['error'] .= $data['template']['type'].' '.$data['template']['ref'].' does not exist<br />';
             }
 
+			$authors = null;
+            if ($data['authors']) {
+	            // Retrieve Authors source
+	            $authors = $this->_load($data, 'authors');
+	            if ( empty($authors) ) {
+	                $data['error'] .= $data['authors']['type'].' '.$data['authors']['ref'].' does not exist<br />';
+	            }
+            }
+
+
             if ( !empty($bibtex) && !empty($template) ) {
                 require_once(dirname(__FILE__).'/bib2tpl/bibtex_converter.php');
                 if ( is_readable(dirname(__FILE__).'/sanitiser.php')) {
@@ -106,7 +123,7 @@ class syntax_plugin_publist extends DokuWiki_Syntax_Plugin {
                 if ( empty($sanitiser) ) {
                    $sanitiser = create_function('$i', 'return $i;');
                 }
-                $parser = new BibtexConverter($data['options'],$sanitiser);
+                $parser = new BibtexConverter($data['options'],$sanitiser,$authors);
                 $code = $parser->convert($bibtex, $template);
                 
                 if ( $data['template']['target'] == 'wiki' ) {
@@ -129,6 +146,9 @@ class syntax_plugin_publist extends DokuWiki_Syntax_Plugin {
     function _load($data, $kind) {
         global $INFO;
 
+        if ( $data[$kind]['type'] == 'url' ) {
+            return file_get_contents($data[$kind]['ref']);
+        }
         if ( $data[$kind]['type'] == 'file' ) {
             return file_get_contents(dirname(__FILE__).'/'.$kind.'/'.$data[$kind]['ref']);
         }
