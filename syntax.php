@@ -32,7 +32,7 @@ class syntax_plugin_publist extends DokuWiki_Syntax_Plugin {
         $this->Lexer->addSpecialPattern('\[publist\|.+?\]',$mode,'plugin_publist');
     }
 
-    function handle($match, $state, $pos, &$handler){
+    function handle($match, $state, $pos, Doku_Handler $handler){
         $data = array();
 
         // Partition properly 
@@ -82,7 +82,7 @@ class syntax_plugin_publist extends DokuWiki_Syntax_Plugin {
         return $data;
     }
 
-    function render($mode, &$renderer, $data) {
+    function render($mode, Doku_Renderer $renderer, $data) {
         if($mode != 'xhtml') return false;
  
         if ( empty($data['error']) ) {
